@@ -32,9 +32,17 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             imgSrc: ["'self'", "data:", "blob:", "http://localhost:5000", "http://localhost:3000", "https://mustafamuhamed24.github.io"],
-            connectSrc: ["'self'", "http://localhost:5000", "http://localhost:3000", "https://mustafamuhamed24.github.io", "wss://ajrly-backend.onrender.com"],
+            connectSrc: [
+                "'self'",
+                "http://localhost:5000",
+                "http://localhost:3000",
+                "https://mustafamuhamed24.github.io",
+                "wss://ajrly-backend.onrender.com",
+                "https://ajrly-backend.onrender.com"
+            ],
             styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+            upgradeInsecureRequests: []
         }
     }
 }));

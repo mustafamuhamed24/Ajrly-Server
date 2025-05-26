@@ -15,8 +15,23 @@ const initializeSocket = (server) => {
                 "https://mustafamuhamed24.github.io/Ajrly-Client"
             ],
             methods: ["GET", "POST"],
-            credentials: true
+            credentials: true,
+            allowedHeaders: ["Content-Type", "Authorization"]
+        },
+        transports: ['websocket', 'polling'],
+        allowEIO3: true,
+        pingTimeout: 60000,
+        pingInterval: 25000,
+        upgradeTimeout: 30000,
+        allowUpgrades: true,
+        perMessageDeflate: {
+            threshold: 2048
         }
+    });
+
+    // Add connection error handling
+    io.engine.on("connection_error", (err) => {
+        console.log('Connection error:', err);
     });
 
     // Authentication middleware
