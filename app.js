@@ -31,8 +31,8 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            imgSrc: ["'self'", "data:", "blob:", "http://localhost:5000", "http://localhost:3000"],
-            connectSrc: ["'self'", "http://localhost:5000", "http://localhost:3000"],
+            imgSrc: ["'self'", "data:", "blob:", "http://localhost:5000", "http://localhost:3000", "https://mustafamuhamed24.github.io"],
+            connectSrc: ["'self'", "http://localhost:5000", "http://localhost:3000", "https://mustafamuhamed24.github.io", "wss://ajrly-backend.onrender.com"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
         }
@@ -44,7 +44,11 @@ app.use(hpp());
 
 // Enable CORS
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: [
+        process.env.CLIENT_URL || 'http://localhost:3000',
+        'https://mustafamuhamed24.github.io',
+        'https://mustafamuhamed24.github.io/Ajrly-Client'
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -96,7 +100,7 @@ app.use('/uploads', express.static(uploadsPath, {
         try {
             // Set CORS headers
             res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-            res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+            res.set('Access-Control-Allow-Origin', '*');
             res.set('Access-Control-Allow-Methods', 'GET');
             res.set('Access-Control-Allow-Credentials', 'true');
             res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
