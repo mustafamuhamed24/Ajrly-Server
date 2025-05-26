@@ -9,33 +9,10 @@ let io;
 const initializeSocket = (server) => {
     io = socketIO(server, {
         cors: {
-            origin: [
-                process.env.CLIENT_URL || "http://localhost:3000",
-                "https://mustafamuhamed24.github.io",
-                "https://mustafamuhamed24.github.io/Ajrly-Client"
-            ],
-            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            credentials: true,
-            allowedHeaders: ["Content-Type", "Authorization"],
-            exposedHeaders: ["Content-Type", "Authorization"]
-        },
-        transports: ['websocket', 'polling'],
-        allowEIO3: true,
-        pingTimeout: 60000,
-        pingInterval: 25000,
-        upgradeTimeout: 30000,
-        allowUpgrades: true,
-        perMessageDeflate: {
-            threshold: 2048
-        },
-        path: '/socket.io/',
-        serveClient: false,
-        cookie: false
-    });
-
-    // Add connection error handling
-    io.engine.on("connection_error", (err) => {
-        console.log('Connection error:', err);
+            origin: process.env.CLIENT_URL || "http://localhost:3000",
+            methods: ["GET", "POST"],
+            credentials: true
+        }
     });
 
     // Authentication middleware
@@ -56,7 +33,6 @@ const initializeSocket = (server) => {
             socket.user = user;
             next();
         } catch (error) {
-            console.error('Socket authentication error:', error);
             next(new Error('Authentication error'));
         }
     });
