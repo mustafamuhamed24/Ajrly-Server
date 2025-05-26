@@ -14,9 +14,10 @@ const initializeSocket = (server) => {
                 "https://mustafamuhamed24.github.io",
                 "https://mustafamuhamed24.github.io/Ajrly-Client"
             ],
-            methods: ["GET", "POST"],
+            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             credentials: true,
-            allowedHeaders: ["Content-Type", "Authorization"]
+            allowedHeaders: ["Content-Type", "Authorization"],
+            exposedHeaders: ["Content-Type", "Authorization"]
         },
         transports: ['websocket', 'polling'],
         allowEIO3: true,
@@ -26,7 +27,10 @@ const initializeSocket = (server) => {
         allowUpgrades: true,
         perMessageDeflate: {
             threshold: 2048
-        }
+        },
+        path: '/socket.io/',
+        serveClient: false,
+        cookie: false
     });
 
     // Add connection error handling
@@ -52,6 +56,7 @@ const initializeSocket = (server) => {
             socket.user = user;
             next();
         } catch (error) {
+            console.error('Socket authentication error:', error);
             next(new Error('Authentication error'));
         }
     });
