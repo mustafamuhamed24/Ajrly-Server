@@ -55,8 +55,8 @@ const initializeSocket = (server) => {
                     content
                 });
 
-                // Emit to receiver
-                io.to(receiverId).emit('receive_message', {
+                // Emit to both sender and receiver
+                io.to([receiverId, socket.user._id.toString()]).emit('receive_message', {
                     message,
                     sender: {
                         _id: socket.user._id,
