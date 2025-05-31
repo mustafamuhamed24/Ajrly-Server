@@ -1,32 +1,28 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
     createBooking,
-    getBookings,
     getUserBookings,
-    updateBookingStatus,
-    deleteBooking
-} = require('../controllers/bookings');
-const { protect } = require('../middleware/auth');
-const Booking = require('../models/booking');
+    deleteBooking,
+    getBookingById,
+    cancelBooking,
+    getOwnerBookings,
+    updateBookingStatus
+} = require('../controllers/bookingController');
 
 // Protected routes
-router.post('/', protect, createBooking);
-router.get('/user/:userId', protect, getUserBookings);
-router.delete('/:id', protect, deleteBooking);
+router.use(protect);
 
-// All authenticated users can access these routes
-router.get('/', protect, getBookings);
-router.put('/:id', protect, updateBookingStatus);
+// User routes
+router.post('/', createBooking);
+router.get('/list', getUserBookings);
+router.delete('/:id', deleteBooking);
+router.get('/:id', getBookingById);
+router.put('/:id/cancel', cancelBooking);
 
-// Get all bookings for the current user
-router.get('/mine', protect, async (req, res) => {
-    try {
-        const bookings = await Booking.find({ user: req.user._id });
-        res.json(bookings);
-    } catch (err) {
-        res.status(500).json({ message: 'Failed to fetch bookings' });
-    }
-});
+// Owner routes
+router.get('/owner', getOwnerBookings);
+router.put('/:id/status', updateBookingStatus);
 
 module.exports = router; 

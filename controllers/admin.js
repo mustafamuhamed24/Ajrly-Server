@@ -8,27 +8,35 @@ const sharp = require('sharp');
 exports.getStatistics = async (req, res, next) => {
     try {
         const userId = req.user._id;
-        
+
         // Get user's properties
         const userProperties = await Property.find({ owner: userId });
         const totalProperties = userProperties.length;
         const activeProperties = userProperties.filter(p => p.status === 'available').length;
-        
-        // Get user's bookings
-        const userBookings = await Booking.find({ user: userId });
-        const totalBookings = userBookings.length;
-        
-        // Calculate user's revenue
-        const totalRevenueAgg = await Booking.aggregate([
-            { $match: { user: userId, status: 'completed' } },
-            { $group: { _id: null, total: { $sum: "$totalPrice" } } }
-        ]);
-        const totalRevenue = totalRevenueAgg[0]?.total || 0;
+
+        // Get bookings for user's properties
+        const propertyIds = userProperties.map(p => p._id);
+        const propertyBookings = await Booking.find({
+            property: { $in: propertyIds }
+        });
+
+        const totalBookings = propertyBookings.length;
+        const activeBookings = propertyBookings.filter(booking =>
+            new Date(booking.checkIn) <= new Date() &&
+            new Date(booking.checkOut) >= new Date() &&
+            booking.status === 'confirmed'
+        ).length;
+
+        // Calculate total revenue from all bookings
+        const totalRevenue = propertyBookings.reduce((sum, booking) =>
+            sum + (booking.totalAmount || 0), 0
+        );
 
         res.json({
             totalProperties,
             activeProperties,
             totalBookings,
+            activeBookings,
             totalRevenue
         });
     } catch (err) {
@@ -265,21 +273,75 @@ exports.getPropertyById = async (req, res) => {
     }
 };
 
-// Bookings - now returns user's own bookings
+// List bookings for user's properties
 exports.listBookings = async (req, res, next) => {
     try {
-        const bookings = await Booking.find({ user: req.user._id })
-            .populate('property')
-            .populate('user', 'name email');
-        res.json(bookings);
+        // Get user's properties
+        const userProperties = await Property.find({ owner: req.user._id });
+        const propertyIds = userProperties.map(p => p._id);
+
+        // Get all bookings for these properties
+        const bookings = await Booking.find({
+            property: { $in: propertyIds }
+        })
+            .populate({
+                path: 'property',
+                select: 'title location images price'
+            })
+            .populate('user', 'name email phone')
+            .sort({ createdAt: -1 });
+
+        // Format the response
+        const formattedBookings = bookings.map(booking => ({
+            ...booking.toObject(),
+            propertyDetails: {
+                title: booking.property.title,
+                location: booking.property.location,
+                images: booking.property.images,
+                price: booking.property.price
+            },
+            guestDetails: {
+                name: booking.user.name,
+                email: booking.user.email,
+                phone: booking.user.phone
+            }
+        }));
+
+        res.json(formattedBookings);
     } catch (err) {
         next(err);
     }
 };
 
+// Update booking status
 exports.updateBookingStatus = async (req, res, next) => {
     try {
-        const booking = await Booking.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
+        const { status } = req.body;
+        const booking = await Booking.findById(req.params.id)
+            .populate('property')
+            .populate('user', 'name email');
+
+        if (!booking) {
+            return res.status(404).json({ message: 'Booking not found' });
+        }
+
+        // Check if user owns the property
+        const property = await Property.findById(booking.property._id);
+        if (!property || property.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to update this booking' });
+        }
+
+        booking.status = status;
+        await booking.save();
+
+        // Emit socket events
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('booking:updated', { booking });
+            io.to(`user:${booking.user._id}`).emit('booking:updated', { booking });
+            io.to(`user:${property.owner}`).emit('booking:updated', { booking });
+        }
+
         res.json(booking);
     } catch (err) {
         next(err);

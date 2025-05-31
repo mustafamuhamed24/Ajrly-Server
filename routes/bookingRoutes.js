@@ -7,7 +7,8 @@ const {
     deleteBooking,
     getBookingById,
     cancelBooking,
-    getOwnerBookings
+    getOwnerBookings,
+    updateBookingStatus
 } = require('../controllers/bookingController');
 
 // Protected routes
@@ -21,6 +22,7 @@ router.get('/:id', getBookingById);
 router.put('/:id/cancel', cancelBooking);
 
 // Owner routes
-router.get('/owner/list', getOwnerBookings);
+router.get('/owner', getOwnerBookings);
+router.put('/:id/status', updateBookingStatus);
 
 module.exports = router; 
