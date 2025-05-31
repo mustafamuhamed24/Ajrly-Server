@@ -11,9 +11,14 @@ exports.getProperties = async (req, res) => {
         // Build query based on filters
         const query = {};
 
-        // Location search
+        // Location search - search in multiple fields
         if (req.query.location) {
-            query['location.city'] = { $regex: req.query.location, $options: 'i' };
+            query.$or = [
+                { 'location.city': { $regex: req.query.location, $options: 'i' } },
+                { 'location.address': { $regex: req.query.location, $options: 'i' } },
+                { 'location.state': { $regex: req.query.location, $options: 'i' } },
+                { 'location.country': { $regex: req.query.location, $options: 'i' } }
+            ];
         }
 
         // Price range
@@ -37,11 +42,9 @@ exports.getProperties = async (req, res) => {
             query.type = req.query.propertyType;
         }
 
-        // Only show available properties
-        query.status = 'available';
-
         console.log('Final query:', query);
 
+        // Get all properties with filters
         const properties = await Property.find(query)
             .populate('owner', 'name email')
             .sort({ createdAt: -1 });
