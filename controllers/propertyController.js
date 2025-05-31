@@ -6,12 +6,47 @@ const { validateProperty } = require('../utils/validators');
 // Get all properties
 exports.getProperties = async (req, res) => {
     try {
-        console.log('Fetching all properties...');
-        console.log('Request query:', req.query);
-        const properties = await Property.find()
+        console.log('Fetching properties with filters:', req.query);
+
+        // Build query based on filters
+        const query = {};
+
+        // Location search
+        if (req.query.location) {
+            query['location.city'] = { $regex: req.query.location, $options: 'i' };
+        }
+
+        // Price range
+        if (req.query.minPrice || req.query.maxPrice) {
+            query.price = {};
+            if (req.query.minPrice) {
+                query.price.$gte = Number(req.query.minPrice);
+            }
+            if (req.query.maxPrice) {
+                query.price.$lte = Number(req.query.maxPrice);
+            }
+        }
+
+        // Bedrooms
+        if (req.query.bedrooms) {
+            query.bedrooms = Number(req.query.bedrooms);
+        }
+
+        // Property type
+        if (req.query.propertyType) {
+            query.type = req.query.propertyType;
+        }
+
+        // Only show available properties
+        query.status = 'available';
+
+        console.log('Final query:', query);
+
+        const properties = await Property.find(query)
             .populate('owner', 'name email')
             .sort({ createdAt: -1 });
-        console.log(`Found ${properties.length} properties:`, properties.map(p => ({ id: p._id, title: p.title })));
+
+        console.log(`Found ${properties.length} properties`);
         res.json(properties);
     } catch (error) {
         console.error('Error in getProperties:', error);

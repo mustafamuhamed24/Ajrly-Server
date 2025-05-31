@@ -21,10 +21,8 @@ exports.getStatistics = async (req, res, next) => {
         });
 
         const totalBookings = propertyBookings.length;
-        const activeBookings = propertyBookings.filter(booking =>
-            new Date(booking.checkIn) <= new Date() &&
-            new Date(booking.checkOut) >= new Date() &&
-            booking.status === 'confirmed'
+        const pendingBookings = propertyBookings.filter(booking => 
+            booking.status === 'pending'
         ).length;
 
         // Calculate total revenue from all bookings
@@ -36,7 +34,7 @@ exports.getStatistics = async (req, res, next) => {
             totalProperties,
             activeProperties,
             totalBookings,
-            activeBookings,
+            pendingBookings,
             totalRevenue
         });
     } catch (err) {
