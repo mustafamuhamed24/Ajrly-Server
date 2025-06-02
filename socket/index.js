@@ -5,6 +5,7 @@ const Chat = require('../models/Chat');
 const Notification = require('../models/Notification');
 
 let io;
+const onlineUsers = new Map(); // userId -> { socketId, lastSeen: Date }
 
 const initializeSocket = (server) => {
     io = socketIO(server, {
@@ -41,7 +42,10 @@ const initializeSocket = (server) => {
     });
 
     io.on('connection', (socket) => {
-        console.log('User connected:', socket.user._id);
+        const userId = socket.user._id.toString();
+        onlineUsers.set(userId, { socketId: socket.id, lastSeen: null });
+        io.emit('user_online', { userId });
+        console.log(`[SOCKET] User connected: ${userId}`);
 
         // Join user's room for private messages
         socket.join(socket.user._id.toString());
@@ -113,7 +117,9 @@ const initializeSocket = (server) => {
 
         // Handle disconnection
         socket.on('disconnect', () => {
-            console.log('User disconnected:', socket.user._id);
+            onlineUsers.set(userId, { socketId: null, lastSeen: new Date() });
+            io.emit('user_offline', { userId, lastSeen: new Date() });
+            console.log(`[SOCKET] User disconnected: ${userId}`);
         });
     });
 
@@ -127,7 +133,20 @@ const getIO = () => {
     return io;
 };
 
+// Helper to get online status for a list of userIds
+function getUserStatus(userIds) {
+    return userIds.map(id => {
+        const entry = onlineUsers.get(id.toString());
+        return {
+            userId: id.toString(),
+            online: !!(entry && entry.socketId),
+            lastSeen: entry && entry.lastSeen ? entry.lastSeen : null
+        };
+    });
+}
+
 module.exports = {
     initializeSocket,
-    getIO
+    getIO,
+    getUserStatus
 }; 

@@ -11,6 +11,7 @@ const {
 const { protect, authorize } = require('../middleware/auth');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const { getUserStatus } = require('../socket');
 
 // Ensure upload directory exists with proper permissions
 const uploadDir = path.join(__dirname, '..', 'uploads', 'profile-images');
@@ -276,6 +277,13 @@ router.post('/me/profile-image', protect, upload.single('profileImage'), handleM
             details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
+});
+
+// Add after other routes
+router.post('/status', async (req, res) => {
+    const { userIds } = req.body;
+    const statusList = getUserStatus(userIds);
+    res.json(statusList);
 });
 
 module.exports = router; 
