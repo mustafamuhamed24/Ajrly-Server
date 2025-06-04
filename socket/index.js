@@ -9,15 +9,23 @@ let io;
 const onlineUsers = new Map(); // userId -> { socketId, lastSeen: Date }
 
 const initializeSocket = (server) => {
+    // Parse CORS origins from environment variable
+    const corsOrigins = process.env.SOCKET_CORS_ORIGIN
+        ? process.env.SOCKET_CORS_ORIGIN.split(',')
+        : process.env.NODE_ENV === 'production'
+            ? ['https://mustafamuhamed24.github.io']
+            : ['http://localhost:3000'];
+
     io = socketIO(server, {
         cors: {
-            origin: [
-                "http://localhost:3000",
-                "https://mustafamuhamed24.github.io"
-            ],
+            origin: corsOrigins,
             methods: ["GET", "POST"],
             credentials: true
-        }
+        },
+        pingTimeout: parseInt(process.env.SOCKET_PING_TIMEOUT) || 60000,
+        pingInterval: parseInt(process.env.SOCKET_PING_INTERVAL) || 25000,
+        maxHttpBufferSize: parseInt(process.env.SOCKET_MAX_HTTP_BUFFER_SIZE) || 1e8,
+        transports: ['websocket', 'polling']
     });
 
     // Authentication middleware
