@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Chat = require('../models/Chat');
 const Notification = require('../models/Notification');
+const Booking = require('../models/Booking');
 
 let io;
 const onlineUsers = new Map(); // userId -> { socketId, lastSeen: Date }
@@ -47,7 +48,7 @@ const initializeSocket = (server) => {
         io.emit('user_online', { userId });
         console.log(`[SOCKET] User connected: ${userId}`);
 
-        // Join user's room for private messages
+        // Join user's room for private messages and notifications
         socket.join(socket.user._id.toString());
 
         // Handle new message
@@ -76,7 +77,9 @@ const initializeSocket = (server) => {
                 const notification = await Notification.create({
                     user: receiverId,
                     type: 'message',
+                    title: 'New Message',
                     content: `New message from ${socket.user.name}`,
+                    sender: socket.user._id,
                     relatedId: message._id
                 });
 
@@ -85,6 +88,114 @@ const initializeSocket = (server) => {
             } catch (error) {
                 console.error('Error sending message:', error);
                 socket.emit('error', 'Failed to send message');
+            }
+        });
+
+        // Handle booking request
+        socket.on('booking_request', async (data) => {
+            try {
+                const { propertyId, ownerId, startDate, endDate } = data;
+
+                // Create booking request
+                const booking = await Booking.create({
+                    property: propertyId,
+                    tenant: socket.user._id,
+                    owner: ownerId,
+                    startDate,
+                    endDate,
+                    status: 'pending'
+                });
+
+                // Create notification for property owner
+                const notification = await Notification.create({
+                    user: ownerId,
+                    type: 'booking_request',
+                    title: 'New Booking Request',
+                    content: `${socket.user.name} wants to book your property`,
+                    sender: socket.user._id,
+                    relatedId: booking._id,
+                    metadata: {
+                        propertyId,
+                        startDate,
+                        endDate
+                    }
+                });
+
+                // Emit notification to property owner
+                io.to(ownerId).emit('new_notification', notification);
+            } catch (error) {
+                console.error('Error creating booking request:', error);
+                socket.emit('error', 'Failed to create booking request');
+            }
+        });
+
+        // Handle booking status update
+        socket.on('booking_status_update', async (data) => {
+            try {
+                const { bookingId, status, tenantId } = data;
+
+                // Update booking status
+                const booking = await Booking.findByIdAndUpdate(
+                    bookingId,
+                    { status },
+                    { new: true }
+                );
+
+                if (!booking) {
+                    throw new Error('Booking not found');
+                }
+
+                // Create notification for tenant
+                const notification = await Notification.create({
+                    user: tenantId,
+                    type: status === 'approved' ? 'booking_approved' : 'booking_rejected',
+                    title: status === 'approved' ? 'Booking Approved' : 'Booking Rejected',
+                    content: status === 'approved'
+                        ? 'Your booking request has been approved'
+                        : 'Your booking request has been rejected',
+                    sender: socket.user._id,
+                    relatedId: booking._id,
+                    metadata: {
+                        propertyId: booking.property,
+                        status
+                    }
+                });
+
+                // Emit notification to tenant
+                io.to(tenantId).emit('new_notification', notification);
+            } catch (error) {
+                console.error('Error updating booking status:', error);
+                socket.emit('error', 'Failed to update booking status');
+            }
+        });
+
+        // Handle mark notification as read
+        socket.on('mark_notification_read', async (data) => {
+            try {
+                const { notificationId } = data;
+                const notification = await Notification.findById(notificationId);
+
+                if (notification && notification.user.toString() === socket.user._id.toString()) {
+                    await notification.markAsRead();
+                    socket.emit('notification_read', { notificationId });
+                }
+            } catch (error) {
+                console.error('Error marking notification as read:', error);
+                socket.emit('error', 'Failed to mark notification as read');
+            }
+        });
+
+        // Handle mark all notifications as read
+        socket.on('mark_all_notifications_read', async () => {
+            try {
+                await Notification.updateMany(
+                    { user: socket.user._id, read: false },
+                    { read: true }
+                );
+                socket.emit('all_notifications_read');
+            } catch (error) {
+                console.error('Error marking all notifications as read:', error);
+                socket.emit('error', 'Failed to mark all notifications as read');
             }
         });
 
